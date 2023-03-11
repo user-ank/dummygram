@@ -33,6 +33,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import DialogBox from "../reusableComponents/DialogBox";
 import ImageSlider from "../reusableComponents/ImageSlider";
 import ReadMore from "./ReadMore";
+import { Link } from "react-router-dom";
 
 const ITEM_HEIGHT = 48;
 
@@ -64,7 +65,7 @@ function Post(prop) {
           setComments(
             snapshot.docs.map((doc) => ({
               id: doc.id,
-              content: doc.data(),
+              content: doc.data()
             }))
           );
         });
@@ -196,10 +197,12 @@ function Post(prop) {
   };
 
   return (
-    <div
+    <div   
       className="post"
       style={{ boxShadow: "0px 0px 5px 1px rgba(0, 0, 0, 0.4)" }}
     >
+      {console.log("from post" + postId)}
+
       <div className="post__header">
         <Avatar
           className="post__avatar"
@@ -277,9 +280,13 @@ function Post(prop) {
 
       <div className="post__container">
         {postHasImages ? (
-          <ImageSlider slides={postImages} isCommentBox={false} />
+          <Link to={"/dummygram/posts/" + postId}>
+            <ImageSlider slides={postImages} isCommentBox={false} />
+          </Link>
         ) : (
-          <div className="post__background">{caption}</div>
+          <Link to={`/dummygram/posts/${postId}`}>
+            <div className="post__background">{caption}</div>
+          </Link>
         )}
         <div className="social__icons__wrapper">
           <div

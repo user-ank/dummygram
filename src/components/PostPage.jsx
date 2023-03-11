@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from "react";
-import Post from "./components/Post";
-import { db, auth } from "./lib/firebase";
+import Post from "./Post";
+import { db, auth } from "../lib/firebase";
+import {doc, getDoc} from 'firebase/firestore'
 import { Button, Dialog, Modal, DialogContent } from "@mui/material";
 import { makeStyles } from "@mui/styles";
-import ImgUpload from "./components/ImgUpload";
-import Loader from "./components/Loader";
+import ImgUpload from "./ImgUpload";
+import Loader from "./Loader";
 import { FaArrowCircleUp } from "react-icons/fa";
 import { useSnackbar } from "notistack";
-import logo from "./assets/logo.png";
-import { Routes, Route, useNavigate } from "react-router-dom";
-import LoginScreen from "./pages/Login";
-import SignupScreen from "./pages/Signup";
-import AnimatedButton from "./components/AnimatedButton";
-import NotFoundPage from "./components/NotFound";
-import PostPage from "./components/PostPage";
+import logo from "../assets/logo.png";
+import { Routes, Route, useNavigate, useParams } from "react-router-dom";
+
+import AnimatedButton from "./AnimatedButton";
+
 
 export function getModalStyle() {
   const top = 50;
@@ -43,18 +42,17 @@ export const useStyles = makeStyles((theme) => ({
   },
 }));
 
-function App() {
+function PostPage(props) {
   const classes = useStyles();
-
   const navigate = useNavigate();
 
-  const [posts, setPosts] = useState([]);
-  const [user, setUser] = useState(null);
+  const [post, setPost] = useState([]);
+  const [user, setUser] = useState(props.user);
   const [loadingPosts, setLoadingPosts] = useState(true);
-  const [pageSize, setPageSize] = useState(10);
-  const [loadMorePosts, setLoadMorePosts] = useState(false);
   const [openNewUpload, setOpenNewUpload] = useState(false);
   const [logout, setLogout] = useState(false);
+  const params = useParams();
+  const id = params.postId;
 
   const buttonStyle = {
     background: "linear-gradient(40deg, #e107c1, #59afc7)",
@@ -81,21 +79,22 @@ function App() {
 
   window.addEventListener("scroll", checkScrollTop);
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((authUser) => {
-      if (authUser) {
-        setUser(authUser);
-        navigate("/dummygram/");
-      } else {
-        setUser(null);
-        navigate("/dummygram/login");
-      }
-    });
+  // useEffect(() => {
+  //   const unsubscribe = auth.onAuthStateChanged((authUser) => {
+  //     if (authUser) {
+  //       setUser(authUser);
+  //       navigate("/dummygram/");
+  //       console.log("fucking you from line 87 Postpage.jsx")
+  //     } else {
+  //       setUser(null);
+  //       navigate("/dummygram/login");
+  //     }
+  //   });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [user]);
+  //   return () => {
+  //     unsubscribe();
+  //   };
+  // }, [user]);
 
   useEffect(() => {
     if (document.body.classList.contains("darkmode--activated")) {
@@ -112,52 +111,36 @@ function App() {
         "invert(0%)";
     }
 
-    window.addEventListener("scroll", handleMouseScroll);
-    db.collection("posts")
-      .orderBy("timestamp", "desc")
-      .limit(pageSize)
-      .onSnapshot((snapshot) => {
+ 
+    
+    
+    // db.collection("posts")
+    //   .orderBy("timestamp", "desc")
+    //   .limit(pageSize)
+    //   .onSnapshot((snapshot) => {
+    //     setLoadingPosts(false);
+    //     setPosts(
+    //       snapshot.docs.map((doc) => ({
+    //         id: doc.id,
+    //         post: doc.data(),
+    //       }))
+    //     );
+    //   });
+
+    const postRef = doc(db, "posts", id)
+
+    getDoc(postRef)
+    .then((doc) => {
         setLoadingPosts(false);
-        setPosts(
-          snapshot.docs.map((doc) => ({
-            id: doc.id,
-            post: doc.data(),
-          }))
-        );
-      });
+        setPost(doc.data());
+        console.log(doc.data())
+        console.log("from postPage")
+    })
+
+
   }, []);
 
-  const handleMouseScroll = (event) => {
-    if (
-      window.innerHeight + event.target.documentElement.scrollTop + 1 >=
-      event.target.documentElement.scrollHeight
-    ) {
-      setLoadMorePosts(true);
-    }
-  };
-
-  useEffect(() => {
-    console.log("from app/home")
-    if (loadMorePosts && posts.length) {
-      db.collection("posts")
-        .orderBy("timestamp", "desc")
-        .startAfter(posts[posts.length - 1].post.timestamp)
-        .limit(pageSize)
-        .onSnapshot((snapshot) => {
-          setPosts((loadedPosts) => {
-            return [
-              ...loadedPosts,
-              ...snapshot.docs.map((doc) => ({
-                id: doc.id,
-                post: doc.data(),
-              })),
-            ];
-          });
-        });
-    }
-    setLoadMorePosts(false);
-  }, [loadMorePosts]);
-
+  
   const signOut = () => {
     auth.signOut().finally();
     enqueueSnackbar("Logged out Successfully !", {
@@ -317,11 +300,8 @@ function App() {
         </div>
       </Modal>
 
-      <Routes>
-        <Route
-          exact
-          path="/dummygram/"
-          element={
+       <>
+       {
             user ? (
               <div
                 style={{
@@ -347,9 +327,9 @@ function App() {
                     <Loader />
                   ) : (
                     <div className="app__posts">
-                      {posts.map(({ id, post }) => (
+                      {
                         <Post key={id} postId={id} user={user} post={post} />
-                      ))}
+                      }
                     </div>
                   )}
                 </div>
@@ -358,55 +338,7 @@ function App() {
               <></>
             )
           }
-        />
-
-        <Route
-          exact
-          path="/dummygram/posts/:postId"
-          element={
-            user ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignContent: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div
-                  style={
-                    !loadingPosts
-                      ? {}
-                      : {
-                          width: "100%",
-                          minHeight: "100vh",
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                        }
-                  }
-                >
-                  {loadingPosts ? (
-                    <Loader />
-                  ) : (
-                    <div className="app__posts">
-                      {<PostPage user={user} />}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>from line 398 app.jsx</>
-            )
-          }
-        />
-
-        <Route path="/dummygram/login" element={<LoginScreen />} />
-
-        <Route path="/dummygram/signup" element={<SignupScreen />} />
-
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-
+       </>
       <FaArrowCircleUp
         fill="#777"
         // stroke="30"
@@ -421,4 +353,4 @@ function App() {
   );
 }
 
-export default App;
+export default PostPage;
